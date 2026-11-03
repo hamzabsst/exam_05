@@ -8,7 +8,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # User solution path
-USER_DIR="../life"
+USER_DIR="."
 
 # Check user directory
 if [ ! -d "$USER_DIR" ]; then

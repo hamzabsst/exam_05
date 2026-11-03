@@ -12,7 +12,7 @@ echo "=========================================="
 echo ""
 
 # Paths
-RANDOM_FOLDER="../../../../rendu/bsq"
+RANDOM_FOLDER="."
 
 # Check if user solution exists
 if [ ! -d "$RANDOM_FOLDER" ]; then

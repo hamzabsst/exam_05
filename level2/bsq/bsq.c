@@ -1,263 +1,106 @@
+#include "stdio.h"
+#include "stdlib.h"
 
-#include "bsq.h"
-
-int loadElements(FILE* file, t_elements* elements)
-{
-	int ret = fscanf(file, "%d %c %c %c", &(elements->n_lines), &(elements->empty), &(elements->obstacle), &(elements->full));
-
-	if((ret != 4))
-		return(-1);
-
-	if(elements->n_lines <= 0)
-		return(-1);
-	if(elements->empty == elements->obstacle || elements->empty == elements->full || elements->obstacle == elements->full)
-		return(-1);
-	if(elements->empty < 32 || elements->empty > 126)
-		return(-1);
-	if(elements->obstacle < 32 || elements->obstacle > 126)
-		return(-1);
-	if(elements->full < 32 || elements->full > 126)
-		return(-1);
-
-	return(0);
-}
-
-char* ft_substr(char* arr, int start, int len)
-{
-	char* str = (char*)malloc(len + 1);
-	if (!str)
-		return (NULL);
-	int i = 0;
-	int j = 0;
-	while (arr[i])
-	{
-		if ((i >= start) && (j < len))
-		{
-			str[j] = arr[i];
-			j++;
-		}
-		i++;
-	}
-	str[j] = '\0';
-	return(str);
-}
-
-void free_map(char** arr)
-{
-	int	i = 0;
-	if(arr)
-	{
-		while (arr[i] != NULL)
-		{
-			if(arr[i])
-				free(arr[i]);
-			i++;
-		}
-		free(arr);
-	}
-}
-
-void print(char** arr)
+int slen(char *s)
 {
 	int i = 0;
-	while(arr[i])
-	{
-		printf("%s\n", arr[i]);
+	while (s[i])
 		i++;
-	}
-	printf("\n");
+	return i;
+}
+int min(int a, int b, int c)
+{
+	return a < b ? (a < c ? a : c) : (b < c ? b : c);
 }
 
-int element_control(char** map, char c1, char c2)
+void free_arr(void **ptr, int n)
 {
-	int i = 0;
-	while(map[i])
-	{
-		int j = 0;
-		while(map[i][j] != '\0')
-		{
-			if((map[i][j] != c1) && (map[i][j] != c2))
-				return(-1);
-			j++;
-		}
-		i++;
-	}
-	return(0);
+	if (!ptr)
+		return;
+	for (int i = 0; i < n; i++)
+		free(ptr[i]);
+	free(ptr);
 }
 
-int loadMap(FILE* file, t_map* map, t_elements* elements)
+int bsq(FILE *file)
 {
-	map->height = elements->n_lines;
-	map->grid = (char**)malloc((map->height + 1) * (sizeof(char *)));
-	map->grid[map->height] = NULL;
-
-	char* line = NULL;
+	char empty = 0, obstacle = 0, full = 0;
+	int height = 0;
+	if (fscanf(file, "%d %c %c %c\n", &height, &empty, &obstacle, &full) != 4)
+		return 1;
+	if (height <= 0 || empty == obstacle || empty == full || obstacle == full)
+		return 1;
+	char** map = calloc(height, sizeof(char*));
+	int i = 0, w;
+	char *line = NULL;
 	size_t len = 0;
-
-	if(getline(&line, &len, file) == -1) {
-		free_map(map->grid);
-		return(-1);
-	}
-
-	//int i = 0;
-	//while(i < elements->n_lines)
-	for(int i = 0; i < map->height; i++)
+	for (; getline(&line, &len, file) != -1; i++)
 	{
-		int read = getline(&line, &len, file);
-		if(read == -1) {
-			free(line);
-			free_map(map->grid);
-			return(-1);
-		}
-		if(line[read - 1] == '\n')
-			read--;
-		else{
-			free(line);
-			free_map(map->grid);
-			return(-1);
-		}
-		map->grid[i] = ft_substr(line, 0, read);
-		if(!(map->grid[i]))
+		if (i == height)
+			return free(line), free_arr((void**)map, height), 1;
+		map[i] = line;
+		line = NULL;
+		len = 0;
+		if (i == 0)
 		{
-			free(line);
-			free_map(map->grid);
-			return(-1);
+			w = slen(map[0]);
+			if (w < 2 || map[0][w-1] != '\n')
+				return free_arr((void**)map, height), 1;
 		}
-
-		if(i == 0)
-			map->width = read;
-		else{
-			if(map->width != read){
-				free(line);
-				free_map(map->grid);
-				return(-1);
-			}
-		}
-		//i++;
+		else if (w != slen(map[i]) || map[i][w-1] != '\n')
+			return free_arr((void**)map, height), 1;
 	}
-
-	/*
-	ssize_t extra = getline(&line, &len, file);
-	if(extra != -1) {  // Fazladan satır var!
-		free(line);
-		free_map(map->grid);
-		return(-1);
-	}
-	// gerek var mı bilmiyorum??
-	*/
-
-	if(element_control(map->grid, elements->empty, elements->obstacle) == -1) {
-		free(line);
-		free_map(map->grid);
-		return(-1);
-	}
-
-	free(line);
-
-	return (0);
-}
-
-int find_min(int n1, int n2, int n3)
-{
-	int min = n1;
-
-	if(n2 < min)
-		min = n2;
-	if(n3 < min)
-		min = n3;
-	return(min);
-}
-
-void find_big_square(t_map* map, t_square* square, t_elements* elements)
-{
-	// matrix init
-	int matrix[map->height][map->width];
-	for(int i = 0; i < map->height; i++)
+	if (i < height)
+		return free(line), free_arr((void**)map, height), 1;
+	int **dp = calloc(height + 1, sizeof(int*));
+	int y = 0, x = 0, size = 0;
+	for (int i = 0; i <= height; i++)
+		dp[i] = calloc(w + 1, sizeof(int));
+	for (int i = 0; i < height; i++)
 	{
-		for(int j = 0; j < map->width; j++)
-			matrix[i][j] = 0;
-	}
-
-	for(int i = 0; i < map->height; i++)
-	{
-		for(int j = 0; j < map->width; j++)
+		for (int j = 0; j < w - 1; j++)
 		{
-			if(map->grid[i][j] == elements->obstacle)
-				matrix[i][j] = 0;
-			else if(i == 0 || j == 0)
-				matrix[i][j] = 1;
-			else {
-				int min = find_min(matrix[i - 1][j],matrix[i - 1][j - 1], matrix[i][j - 1]);
-				matrix[i][j] = min + 1;
-			}
-
-			if(matrix[i][j] > square->size)
+			if (map[i][j] == empty)
 			{
-				square->size = matrix[i][j];
-				square->i = i - matrix[i][j] + 1;
-				square->j = j - matrix[i][j] + 1;
+				dp[i+1][j+1] = 1 + min(dp[i][j], dp[i+1][j], dp[i][j+1]);
+				if (size < dp[i+1][j+1])
+					y = i, x = j, size = dp[i+1][j+1]; 
 			}
+			else if (map[i][j] != obstacle)
+				return free_arr((void**)map, height), free_arr((void**)dp, height + 1), 1;
 		}
 	}
-	/** matrix print
-	for(int i = 0; i < map->height; i++)
+	for (int i = y - size + 1; i <= y; i++)
 	{
-		for(int j = 0; j < map->width; j++)
+		for (int j = x - size + 1; j <= x; j++)
+			map[i][j] = full;
+	}
+	for (int i = 0; i < height; i++)
+		fprintf(stdout, "%s", map[i]);
+	if (line)
+		free(line);
+	free_arr((void**)map, height);
+	free_arr((void**)dp, height + 1);
+	return 0;
+}
+
+int main(int ac, char **av)
+{
+	if (ac == 1)
+	{
+		if (bsq(stdin))
+			fprintf(stderr, "fuck you\n");
+	}
+	else
+	{
+		for (int a = 1; a < ac; a++)
 		{
-			printf("%d", matrix[i][j]);
-		}
-		printf("\n");
-	}
-	*/
-
-}
-
-void print_filled_square(t_map* map, t_square* square, t_elements* elements)
-{
-
-	for(int i = square->i; i < square->i + square->size; i++)
-	{
-		for(int j = square->j; j < square->j + square->size; j++)
-		{
-			if((i < map->height) && (j < map->width))
-				map->grid[i][j] = elements->full;
+			FILE *file = fopen(av[a], "r");
+			if (!file || bsq(file))
+				fprintf(stderr, "fuck you\n");
+			if (file)
+				fclose(file);
 		}
 	}
-
-	for(int i = 0; i < map->height; i++)
-	{
-		fprintf(stdout, "%s\n", map->grid[i]);
-	}
-}
-
-int execute_bsq(FILE* file)
-{
-	t_elements elements;
-	if(loadElements(file, &elements) == -1)
-		return(-1);
-
-	t_map map;
-	if(loadMap(file, &map, &elements) == -1)
-		return(-1);
-
-	//print(map.grid);
-
-	t_square square;
-	square.size = 0; square.i = 0; square.j = 0;
-	find_big_square(&map, &square, &elements);
-	// printf("size: %d, i: %d, j: %d", square.size, square.i, square.j);
-	print_filled_square(&map, &square, &elements);
-	free_map(map.grid);
-	return(0);
-}
-
-int convert_file_pointer(char* name)
-{
-	FILE* file = fopen(name, "r");
-	if(!file)
-		return(-1);
-	int ret = 0;
-	ret = execute_bsq(file);
-	fclose(file);
-	return(ret);
+	return 0;
 }
