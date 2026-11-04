@@ -49,16 +49,6 @@ vect2 vect2::operator-() const
 	return(temp);
 }
 
-
-vect2 vect2::operator*(int num) const
-{
-	vect2 temp;
-
-	temp.x = this->x * num;
-	temp.y = this->y * num;
-	return(temp);
-}
-
 vect2& vect2::operator*=(int num)
 {
 	this->x *= num;
@@ -109,6 +99,15 @@ vect2 vect2::operator*(const vect2& obj) const
 	vect2 temp = *this;
 	temp.x *= obj.x;
 	temp.y *= obj.y;
+	return(temp);
+}
+
+vect2 vect2::operator*(int num) const
+{
+	vect2 temp;
+
+	temp.x = this->x * num;
+	temp.y = this->y * num;
 	return(temp);
 }
 

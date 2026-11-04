@@ -12,21 +12,11 @@ int min(int a, int b, int c)
 {
 	return a < b ? (a < c ? a : c) : (b < c ? b : c);
 }
-
-void free_arr(void **ptr, int n)
-{
-	if (!ptr)
-		return;
-	for (int i = 0; i < n; i++)
-		free(ptr[i]);
-	free(ptr);
-}
-
 int bsq(FILE *file)
 {
 	char empty = 0, obstacle = 0, full = 0;
 	int height = 0;
-	if (fscanf(file, "%d %c %c %c\n", &height, &empty, &obstacle, &full) != 4)
+	if (fscanf(file, "%d%c%c%c\n", &height, &empty, &obstacle, &full) != 4)
 		return 1;
 	if (height <= 0 || empty == obstacle || empty == full || obstacle == full)
 		return 1;
@@ -37,7 +27,7 @@ int bsq(FILE *file)
 	for (; getline(&line, &len, file) != -1; i++)
 	{
 		if (i == height)
-			return free(line), free_arr((void**)map, height), 1;
+			return 1;
 		map[i] = line;
 		line = NULL;
 		len = 0;
@@ -45,15 +35,16 @@ int bsq(FILE *file)
 		{
 			w = slen(map[0]);
 			if (w < 2 || map[0][w-1] != '\n')
-				return free_arr((void**)map, height), 1;
+				return 1;
 		}
 		else if (w != slen(map[i]) || map[i][w-1] != '\n')
-			return free_arr((void**)map, height), 1;
+			return 1;
 	}
 	if (i < height)
-		return free(line), free_arr((void**)map, height), 1;
+		return 1;
 	int **dp = calloc(height + 1, sizeof(int*));
 	int y = 0, x = 0, size = 0;
+	
 	for (int i = 0; i <= height; i++)
 		dp[i] = calloc(w + 1, sizeof(int));
 	for (int i = 0; i < height; i++)
@@ -62,12 +53,12 @@ int bsq(FILE *file)
 		{
 			if (map[i][j] == empty)
 			{
-				dp[i+1][j+1] = 1 + min(dp[i][j], dp[i+1][j], dp[i][j+1]);
+				dp[i+1][j+1] = 1 + min(dp[i][j], dp[i+1][j], dp[i][j+1]);   
 				if (size < dp[i+1][j+1])
 					y = i, x = j, size = dp[i+1][j+1]; 
 			}
 			else if (map[i][j] != obstacle)
-				return free_arr((void**)map, height), free_arr((void**)dp, height + 1), 1;
+				return 1;
 		}
 	}
 	for (int i = y - size + 1; i <= y; i++)
@@ -77,10 +68,6 @@ int bsq(FILE *file)
 	}
 	for (int i = 0; i < height; i++)
 		fprintf(stdout, "%s", map[i]);
-	if (line)
-		free(line);
-	free_arr((void**)map, height);
-	free_arr((void**)dp, height + 1);
 	return 0;
 }
 
@@ -88,19 +75,19 @@ int main(int ac, char **av)
 {
 	if (ac == 1)
 	{
-		if (bsq(stdin))
-			fprintf(stderr, "fuck you\n");
+		if(bsq(stdin))
+			fprintf(stderr, "Error: invalid map\n");
+	}
+	else if (ac == 2)
+	{
+		FILE *file = fopen(av[1], "r");
+		if (!file || bsq(file))
+			fprintf(stderr, "Error: invalid map\n");
+		if (file)
+			fclose(file);
 	}
 	else
-	{
-		for (int a = 1; a < ac; a++)
-		{
-			FILE *file = fopen(av[a], "r");
-			if (!file || bsq(file))
-				fprintf(stderr, "fuck you\n");
-			if (file)
-				fclose(file);
-		}
-	}
+		fprintf(stderr, "Error: invalid map\n");
+
 	return 0;
 }
