@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <string>
 
 
 class bigint{
@@ -23,11 +24,6 @@ class bigint{
 
         bigint &operator++();
         bigint operator++(int);
-
-        bigint operator>>(unsigned int n)const;
-        bigint operator<<(unsigned int n)const;
-        bigint &operator>>=(unsigned int n);
-        bigint &operator<<=(unsigned int n);
 
         bigint operator>>(const bigint &other)const;
         bigint operator<<(const bigint &other)const;

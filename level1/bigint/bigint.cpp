@@ -51,8 +51,8 @@ bigint &bigint::operator=(const bigint &other)
 }
 bigint bigint::operator+(const bigint &other)const
 {
-    bigint k;
-    k.str = addStrings(this->str, other.str);
+    bigint k(*this);
+    k += other;
     return(k);
 }
 bigint &bigint::operator+=(const bigint &other)
@@ -63,46 +63,16 @@ bigint &bigint::operator+=(const bigint &other)
 
 bigint &bigint::operator++()
 {
-    this->str = addStrings(this->str, "1");
-    return *this;
+    return *this += 1;
 }
 bigint bigint::operator++(int)
 {
     bigint tmp = *this;
-    this->str = addStrings(this->str, "1");
+    ++(*this);
     return tmp;
 }
 
-bigint bigint::operator<<(unsigned int n)const
-{
-    if (this->str == "0")
-        return *this;
-    bigint k;
-    k.str = str;
-    k.str.append(n, '0');
-    return k;
-}
-bigint bigint::operator>>(unsigned int n)const
-{
-    if(n >= str.size() - 1)
-        return bigint(0);
-    bigint k;
-    k.str = str;
-    k.str.erase( k.str.size() - n , n );
-    return k;
-}
-bigint &bigint::operator>>=(unsigned int n)
-{
-     *this = *this >> n ;
-    return *this;
-}
-bigint &bigint::operator<<=(unsigned int n)
-{
-   *this = *this << n;
-   return *this;
-}
-
-unsigned int stringToint(std::string str)
+static unsigned int stringToint(const std::string& str)
 {
     std::stringstream ss(str);
     unsigned int res;
@@ -115,18 +85,16 @@ bigint bigint::operator<<(const bigint &other)const
     unsigned int n = stringToint(other.str);
     if (this->str == "0")
         return *this;
-    bigint k;
-    k.str = str;
+    bigint k(*this);
     k.str.append(n, '0');
     return k;
 }
 bigint bigint::operator>>(const bigint &other)const
 {   
     unsigned int n = stringToint(other.str);
-    if(n >= str.size() - 1)
+    if(n >= str.size())
         return bigint(0);
-    bigint k;
-    k.str = str;
+    bigint k(*this);
     k.str.erase( k.str.size() - n , n );
     return k;
  
