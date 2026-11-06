@@ -1,159 +1,82 @@
 #!/bin/bash
 
-# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Comprehensive Test Script for polyset
-echo -e "${BLUE}🔍 Running COMPREHENSIVE TESTING for polyset${NC}"
-echo "=========================================="
-echo ""
+SUBJECT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd) || exit 1
+USER_DIR="$SUBJECT_DIR/.."
+BUILD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/polyset-test.XXXXXX") || exit 1
+trap 'rm -rf -- "$BUILD_DIR"' EXIT
 
-# Compile the reference solution
-echo -e "${BLUE}📦 Compiling reference solution...${NC}"
-g++ -Wall -Wextra -Werror -std=c++98 -o ref_polyset *.cpp
+SOURCES=(
+    "$SUBJECT_DIR/array_bag.cpp"
+    "$SUBJECT_DIR/tree_bag.cpp"
+    "$USER_DIR/searchable_array_bag.cpp"
+    "$USER_DIR/searchable_tree_bag.cpp"
+    "$USER_DIR/set.cpp"
+)
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Reference compilation failed!${NC}"
+compile_program() {
+    g++ -Wall -Wextra -Werror -std=c++98 -g \
+        -I"$USER_DIR" -I"$SUBJECT_DIR" "$1" "${SOURCES[@]}" -o "$2"
+}
+
+echo -e "${BLUE}📦 Compiling polyset and comparison tests...${NC}"
+if ! compile_program "$SUBJECT_DIR/main.cpp" "$BUILD_DIR/polyset" || \
+   ! compile_program "$SUBJECT_DIR/tests/compare_has.cpp" "$BUILD_DIR/polyset_tests"; then
+    echo -e "${RED}❌ Compilation failed!${NC}"
     exit 1
 fi
+echo -e "${GREEN}✅ Compilation successful!${NC}"
 
-echo -e "${GREEN}✅ Reference compilation successful!${NC}"
-echo ""
-
-# Check if user solution exists
-USER_DIR="."
-USER_CPP="$USER_DIR/polyset.cpp"
-USER_HPP="$USER_DIR/polyset.hpp"
-if [ ! -d "$USER_DIR" ]; then
-    echo -e "${RED}❌ User solution folder not found: $USER_DIR${NC}"
-    exit 1
+# main.cpp needs at least one number. Accept custom inputs or use a sample.
+if [ "$#" -eq 0 ]; then
+    set -- 3 1 2 3
 fi
 
-# Copy and compile user solution
-echo -e "${BLUE}📦 Compiling user solution...${NC}"
-cp $USER_DIR/*.cpp . 2>/dev/null
-cp $USER_DIR/*.hpp . 2>/dev/null
-g++ -Wall -Wextra -Werror -std=c++98 -o user_polyset *.cpp
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ User compilation failed!${NC}"
-    exit 1
+echo -e "${BLUE}🚀 Running polyset with: $*${NC}"
+"$BUILD_DIR/polyset" "$@"
+run_status=$?
+if [ "$run_status" -ne 0 ]; then
+    echo -e "${RED}❌ Program exited with status $run_status.${NC}"
+    exit "$run_status"
 fi
 
-echo -e "${GREEN}✅ User compilation successful!${NC}"
-echo ""
+echo -e "${BLUE}🚀 Comparing tree/array has() with expected membership...${NC}"
+"$BUILD_DIR/polyset_tests"
+test_status=$?
+if [ "$test_status" -ne 0 ]; then
+    echo -e "${RED}❌ Comparison tests failed (status $test_status).${NC}"
+    exit "$test_status"
+fi
 
-# Run both and capture output
-echo -e "${BLUE}🚀 Running tests...${NC}"
-./ref_polyset > ref_output.txt 2>&1
-echo "[DEBUG] Reference output:"; cat ref_output.txt
-./user_polyset > user_output.txt 2>&1
-echo "[DEBUG] User output:"; cat user_output.txt
+if ! command -v valgrind > /dev/null 2>&1; then
+    echo -e "${YELLOW}Valgrind is not installed; memory checks skipped.${NC}"
+    exit 0
+fi
 
-# Compare outputs
-output_match=true
-output_error_msg=""
-if diff -q ref_output.txt user_output.txt > /dev/null; then
-    echo -e "${GREEN}✅ Output matches reference!${NC}"
+echo -e "${BLUE}🚀 Checking memory with valgrind...${NC}"
+check_memory() {
+    local program="$1"
+    shift
+    valgrind --leak-check=full --show-leak-kinds=all \
+        --errors-for-leak-kinds=all --track-origins=yes -s \
+        --error-exitcode=1 "$BUILD_DIR/$program" "$@" \
+        > "$BUILD_DIR/$program.valgrind.txt" 2>&1
+    local status=$?
+    cat "$BUILD_DIR/$program.valgrind.txt"
+    return "$status"
+}
+valgrind_status=0
+check_memory polyset "$@" || valgrind_status=1
+check_memory polyset_tests || valgrind_status=1
+
+if [ "$valgrind_status" -eq 0 ]; then
+    echo -e "${GREEN}✅ Sample and comparison tests passed; no memory errors reported.${NC}"
 else
-    echo -e "${RED}❌ Output does NOT match reference!${NC}"
-    echo -e "${YELLOW}--- Reference Output ---${NC}"
-    cat ref_output.txt
-    echo -e "${YELLOW}--- Your Output ---${NC}"
-    cat user_output.txt
-    echo -e "${YELLOW}--- Diff ---${NC}"
-    diff ref_output.txt user_output.txt
-    output_match=false
-    output_error_msg="Output does not match reference solution."
+    echo -e "${RED}❌ Valgrind reported a problem (status $valgrind_status).${NC}"
 fi
-
-# Run with valgrind for memory leak checking
-echo -e "${BLUE}🚀 Executing valgrind analysis...${NC}"
-echo "Command: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes -s ./user_polyset"
-echo ""
-
-# Capture valgrind output to analyze
-valgrind_output=$(valgrind \
-    --leak-check=full \
-    --show-leak-kinds=all \
-    --track-origins=yes \
-    -s \
-    --error-exitcode=1 \
-    ./user_polyset 2>&1)
-
-exit_code=$?
-
-# Display the full output
-echo "$valgrind_output"
-
-echo ""
-echo -e "${BLUE}🏁 Valgrind analysis completed with exit code: $exit_code${NC}"
-echo ""
-
-# Parse and analyze the output
-echo "======================================="
-echo -e "${YELLOW}📊 DETAILED ANALYSIS RESULTS:${NC}"
-echo "======================================="
-
-# Check for memory leaks
-has_leaks=false
-if echo "$valgrind_output" | grep -q "definitely lost:" && echo "$valgrind_output" | grep "definitely lost:" | grep -v "0 bytes"; then
-    has_leaks=true
-fi
-if echo "$valgrind_output" | grep -q "indirectly lost:" && echo "$valgrind_output" | grep "indirectly lost:" | grep -v "0 bytes"; then
-    has_leaks=true
-fi
-if echo "$valgrind_output" | grep -q "possibly lost:" && echo "$valgrind_output" | grep "possibly lost:" | grep -v "0 bytes"; then
-    has_leaks=true
-fi
-
-# Check for errors
-has_errors=false
-if echo "$valgrind_output" | grep -q "ERROR SUMMARY" && echo "$valgrind_output" | grep "ERROR SUMMARY" | grep -v "0 errors"; then
-    has_errors=true
-fi
-
-# Display results with color coding
-echo -n "Memory Leaks: "
-if [ "$has_leaks" = true ]; then
-    echo -e "${RED}DETECTED - You have memory leaks!${NC}"
-else
-    echo -e "${GREEN}PASSED - No memory leaks detected${NC}"
-fi
-
-echo -n "Valgrind Errors: "
-if [ "$has_errors" = true ]; then
-    echo -e "${RED}DETECTED - Valgrind found errors!${NC}"
-else
-    echo -e "${GREEN}PASSED - No valgrind errors${NC}"
-fi
-
-echo ""
-echo "======================================="
-echo -n "OVERALL RESULT: "
-if [ "$has_leaks" = false ] && [ "$has_errors" = false ] && [ "$output_match" = true ]; then
-    echo -e "${GREEN}✅ ALL TESTS PASSED!${NC}"
-    echo -e "${GREEN}Your polyset implementation is clean!${NC}"
-else
-    echo -e "${RED}❌ ISSUES DETECTED!${NC}"
-    echo -e "${YELLOW}Summary of errors:${NC}"
-    if [ "$has_leaks" = true ]; then
-        echo -e "${RED}  → Memory leaks detected.${NC}"
-    fi
-    if [ "$has_errors" = true ]; then
-        echo -e "${RED}  → Valgrind errors detected.${NC}"
-    fi
-    if [ "$output_match" = false ]; then
-        echo -e "${RED}  → Output does not match reference solution.${NC}"
-    fi
-fi
-echo "======================================="
-
-# Wait for user to press enter before continuing
-read -rp "Press enter to continue..." dummy
-
-# Cleanup temporary files
-rm -f ref_polyset user_polyset ref_output.txt user_output.txt
+exit "$valgrind_status"
