@@ -14,7 +14,7 @@ echo ""
 
 # Compile the reference solution
 echo -e "${BLUE}📦 Compiling reference solution...${NC}"
-g++ -Wall -Wextra -Werror -std=c++98 -o ref_polyset main.cpp *.cpp
+g++ -Wall -Wextra -Werror -std=c++98 -o ref_polyset *.cpp
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Reference compilation failed!${NC}"
@@ -25,7 +25,7 @@ echo -e "${GREEN}✅ Reference compilation successful!${NC}"
 echo ""
 
 # Check if user solution exists
-USER_DIR="../../../../rendu/polyset"
+USER_DIR="."
 USER_CPP="$USER_DIR/polyset.cpp"
 USER_HPP="$USER_DIR/polyset.hpp"
 if [ ! -d "$USER_DIR" ]; then
@@ -35,10 +35,9 @@ fi
 
 # Copy and compile user solution
 echo -e "${BLUE}📦 Compiling user solution...${NC}"
-cp main.cpp user_main.cpp
 cp $USER_DIR/*.cpp . 2>/dev/null
 cp $USER_DIR/*.hpp . 2>/dev/null
-g++ -Wall -Wextra -Werror -std=c++98 -o user_polyset user_main.cpp *.cpp
+g++ -Wall -Wextra -Werror -std=c++98 -o user_polyset *.cpp
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ User compilation failed!${NC}"
     exit 1
@@ -157,4 +156,4 @@ echo "======================================="
 read -rp "Press enter to continue..." dummy
 
 # Cleanup temporary files
-rm -f ref_polyset user_polyset user_main.cpp *.cpp *.hpp ref_output.txt user_output.txt
+rm -f ref_polyset user_polyset ref_output.txt user_output.txt
