@@ -25,8 +25,8 @@ echo -e "${GREEN}✅ Reference compilation successful!${NC}"
 echo ""
 
 # Check if user solution exists
-USER_HPP="../../../../rendu/vect2/vect2.hpp"
-USER_CPP="../../../../rendu/vect2/vect2.cpp"
+USER_HPP="vect2.hpp"
+USER_CPP="vect2.cpp"
 if [ ! -f "$USER_HPP" ] || [ ! -f "$USER_CPP" ]; then
     echo -e "${RED}❌ User solution not found: $USER_HPP or $USER_CPP${NC}"
     exit 1
